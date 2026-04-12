@@ -1,0 +1,1571 @@
+openapi: 3.0.3
+
+info:
+  title: MALIPOPAY API
+  version: 1.0.0
+  description: |
+    MALIPOPAY provides web and mobile payment solutions for businesses in Tanzania.
+    Accept payments via Mobile Money (M-Pesa, Tigo Pesa, Airtel Money, Halo Pesa),
+    Bank Transfer, USSD, and Card.
+
+    ## Authentication
+    All API requests require a project-level API key passed in the `apiToken` header.
+    Obtain your key from the MaliPoPay dashboard under **Settings > API Keys**.
+
+    ## Environments
+    | Environment | Base URL |
+    |-------------|----------|
+    | Production  | `https://core-prod.malipopay.co.tz` |
+    | UAT / Sandbox | `https://core-uat.malipopay.co.tz` |
+
+    ## Response Envelope
+    Every response follows the standard envelope:
+    ```json
+    {
+      "success": true,
+      "code": 800,
+      "message": "Operation completed successfully",
+      "data": { ... }
+    }
+    ```
+
+    ## SDKs
+    - **Node.js** - [malipopay-node](https://github.com/nickswalker21/malipopay-node)
+    - **Python** - [malipopay-python](https://github.com/nickswalker21/malipopay-python)
+  contact:
+    name: MaliPoPay Developer Support
+    email: developers@malipopay.co.tz
+    url: https://malipopay.co.tz
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://core-prod.malipopay.co.tz
+    description: Production
+  - url: https://core-uat.malipopay.co.tz
+    description: UAT (Sandbox)
+
+tags:
+  - name: Payments
+    description: Collect and disburse payments via Mobile Money, Card, USSD, and Lipa Number
+  - name: Customers
+    description: Create and manage customer records
+  - name: Invoices
+    description: Create, send, and track invoices with TRA integration
+  - name: Products
+    description: Manage product and service catalogue
+  - name: SMS
+    description: Send single, bulk, and scheduled SMS messages
+  - name: Account
+    description: Account transactions, reconciliation, and financial reports
+
+security:
+  - apiToken: []
+
+paths:
+  # ─── Payments ───────────────────────────────────────────────
+  /api/v1/payment:
+    post:
+      tags: [Payments]
+      summary: Create a payment (collection)
+      description: >
+        Initiate a mobile money collection from a customer.
+        A USSD push prompt is sent to the customer's phone.
+      operationId: createPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+      responses:
+        "200":
+          description: Payment initiated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      tags: [Payments]
+      summary: List all payments
+      description: Returns all payments for the authenticated project.
+      operationId: listPayments
+      responses:
+        "200":
+          description: Payments fetched successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/PaymentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Payments]
+      summary: Create a payment intent
+      description: >
+        Create a payment intent with full control over payment method,
+        mode (CHARGE, PAYOUT, REFUND), currency, and customer details.
+      operationId: createPaymentIntent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentIntentPayload"
+      responses:
+        "200":
+          description: Payment intent created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/payment/collection:
+    post:
+      tags: [Payments]
+      summary: Collect payment from customer
+      description: Initiate a collection (pull) from a customer's mobile money wallet.
+      operationId: collectPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+      responses:
+        "200":
+          description: Collection initiated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/payment/disbursement:
+    post:
+      tags: [Payments]
+      summary: Disburse payment to customer
+      description: Send money (payout) to a customer's mobile money wallet.
+      operationId: disbursePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+      responses:
+        "200":
+          description: Disbursement initiated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/payment/verify/{reference}:
+    get:
+      tags: [Payments]
+      summary: Verify payment status
+      description: Check the current status of a payment by its reference.
+      operationId: verifyPayment
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: Payment reference (e.g. ML26059)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment status retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaymentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/payment/reference/{reference}:
+    get:
+      tags: [Payments]
+      summary: Get payment by reference
+      description: Retrieve full payment details by reference number.
+      operationId: getPaymentByReference
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: Payment reference
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/PaymentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/payment/approve:
+    post:
+      tags: [Payments]
+      summary: Approve a payment
+      description: Approve a pending payment request.
+      operationId: approvePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovePaymentRequest"
+      responses:
+        "200":
+          description: Payment approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovePaymentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/payment/search:
+    get:
+      tags: [Payments]
+      summary: Search payments
+      description: Search payments with query filters.
+      operationId: searchPayments
+      parameters:
+        - name: q
+          in: query
+          description: Search query string
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by payment status
+          schema:
+            type: string
+            enum: [PROCESSING, SUCCESS, FAILED, PENDING, CANCELLED]
+        - name: from
+          in: query
+          description: Start date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          description: End date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/PaymentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/payment/dashboard:
+    get:
+      tags: [Payments]
+      summary: Payment dashboard summary
+      description: Returns aggregated payment statistics for the dashboard.
+      operationId: getPaymentDashboard
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/payment/report:
+    post:
+      tags: [Payments]
+      summary: Generate payment report
+      description: Generate a payment report for a date range.
+      operationId: generatePaymentReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentReportPayload"
+      responses:
+        "200":
+          description: Report generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Customers ──────────────────────────────────────────────
+  /api/v1/customer:
+    post:
+      tags: [Customers]
+      summary: Create a customer
+      description: Register a new customer for the project.
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerRequest"
+      responses:
+        "200":
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CustomerResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [Customers]
+      summary: List all customers
+      description: Returns all customers for the authenticated project.
+      operationId: listCustomers
+      responses:
+        "200":
+          description: Customers fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CustomerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/customer/{customer_id}:
+    get:
+      tags: [Customers]
+      summary: Get customer by ID
+      operationId: getCustomerById
+      parameters:
+        - name: customer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CustomerResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/customer/phoneNumber/{phoneNumber}:
+    get:
+      tags: [Customers]
+      summary: Get customer by phone number
+      operationId: getCustomerByPhone
+      parameters:
+        - name: phoneNumber
+          in: path
+          required: true
+          description: Phone number in international format (e.g. 255742200105)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/CustomerResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/customer/search:
+    get:
+      tags: [Customers]
+      summary: Search customers
+      operationId: searchCustomers
+      parameters:
+        - name: q
+          in: query
+          description: Search query (name, phone, email)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/CustomerResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Invoices ───────────────────────────────────────────────
+  /api/v1/invoice:
+    post:
+      tags: [Invoices]
+      summary: Create an invoice
+      description: Create a new invoice. Optionally integrates with TRA for fiscal receipts.
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceRequest"
+      responses:
+        "200":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/InvoiceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [Invoices]
+      summary: List all invoices
+      operationId: listInvoices
+      responses:
+        "200":
+          description: Invoices fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/InvoiceResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/invoice/{invoiceId}:
+    get:
+      tags: [Invoices]
+      summary: Get invoice by ID
+      operationId: getInvoiceById
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/InvoiceResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [Invoices]
+      summary: Update an invoice
+      operationId: updateInvoice
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceRequest"
+      responses:
+        "200":
+          description: Invoice updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/InvoiceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/invoice/record-payment:
+    post:
+      tags: [Invoices]
+      summary: Record payment against an invoice
+      description: Record a manual or external payment against an existing invoice.
+      operationId: recordInvoicePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoiceId, amount]
+              properties:
+                invoiceId:
+                  type: string
+                  description: Invoice ID
+                  example: "64c2de5f1a3b7e9d0f5a2c81"
+                amount:
+                  type: number
+                  description: Amount paid
+                  example: 590000
+                paymentMethod:
+                  type: string
+                  description: Method of payment
+                  example: "BANK_TRANSFER"
+      responses:
+        "200":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Products ───────────────────────────────────────────────
+  /api/v1/product:
+    post:
+      tags: [Products]
+      summary: Create a product
+      description: Add a new product or service to the catalogue.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+      responses:
+        "200":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [Products]
+      summary: List all products
+      operationId: listProducts
+      responses:
+        "200":
+          description: Products fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ProductResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [Products]
+      summary: Update a product
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductRequest"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/product/{productId}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      operationId: getProductById
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── SMS ────────────────────────────────────────────────────
+  /sms/:
+    post:
+      tags: [SMS]
+      summary: Send a single SMS
+      description: Send an SMS message to a single recipient.
+      operationId: sendSMS
+      security:
+        - apiToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SMSRequest"
+      responses:
+        "200":
+          description: SMS sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SMSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    get:
+      tags: [SMS]
+      summary: List all SMS messages
+      operationId: listSMS
+      security:
+        - apiToken: []
+      responses:
+        "200":
+          description: SMS messages fetched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SMSResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sms/bulk:
+    post:
+      tags: [SMS]
+      summary: Send bulk SMS
+      description: Send an SMS message to multiple recipients at once.
+      operationId: sendBulkSMS
+      security:
+        - apiToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkSMSRequest"
+      responses:
+        "200":
+          description: Bulk SMS queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SMSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sms/schedule:
+    post:
+      tags: [SMS]
+      summary: Schedule an SMS
+      description: Schedule an SMS for future delivery.
+      operationId: scheduleSMS
+      security:
+        - apiToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleSMSRequest"
+      responses:
+        "200":
+          description: SMS scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SMSResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Account ────────────────────────────────────────────────
+  /api/v1/account/allTransaction:
+    get:
+      tags: [Account]
+      summary: Get all account transactions
+      description: Returns all transactions for the authenticated project account.
+      operationId: getAllTransactions
+      responses:
+        "200":
+          description: Transactions fetched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/account/transaction/{id}:
+    get:
+      tags: [Account]
+      summary: Get transaction by ID
+      operationId: getTransactionById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Transaction document ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction fetched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/account/reconciliation:
+    get:
+      tags: [Account]
+      summary: Get reconciliation webhooks
+      description: Returns webhook records for reconciliation purposes.
+      operationId: getReconciliation
+      responses:
+        "200":
+          description: Reconciliation data fetched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    apiToken:
+      type: apiKey
+      in: header
+      name: apiToken
+      description: >
+        Project API key. Obtain from the MaliPoPay dashboard under
+        Settings > API Keys.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token issued by malipopay-auth-service.
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Unauthorized:
+      description: Unauthorized - invalid or missing apiToken
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+          example:
+            success: false
+            code: 886
+            message: "Invalid apiToken"
+            details: "The provided API key is invalid or expired."
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+
+  schemas:
+    # ─── Envelope ───────────────────────────────────────────
+    ApiResponse:
+      type: object
+      description: Standard MALIPOPAY API response envelope.
+      required: [success, code, message]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: integer
+          description: MALIPOPAY-specific status code
+          example: 800
+        message:
+          type: string
+          example: "Operation completed successfully"
+        data:
+          type: object
+          description: Endpoint-specific payload
+          additionalProperties: true
+
+    ApiErrorResponse:
+      type: object
+      description: Standard MALIPOPAY API error response.
+      required: [success, code, message]
+      properties:
+        success:
+          type: boolean
+          example: false
+        code:
+          type: integer
+          description: MALIPOPAY-specific error code
+          example: 886
+        message:
+          type: string
+          example: "Operation failed"
+        details:
+          type: string
+          description: Human-readable error details
+          example: "Invalid apiToken"
+
+    # ─── Payments ───────────────────────────────────────────
+    PaymentRequest:
+      type: object
+      required: [description, amount, phoneNumber]
+      properties:
+        reference:
+          type: string
+          description: Unique reference for the payment. Leave empty for server-generated.
+        description:
+          type: string
+          description: Description of the payment.
+          example: "Order #1234 payment"
+        amount:
+          type: integer
+          description: Amount in smallest currency unit (e.g. TZS).
+          example: 1000
+        phoneNumber:
+          type: string
+          description: Customer phone number in international format.
+          example: "255742200105"
+
+    PaymentResponse:
+      type: object
+      required: [customer, merchantAccountId, mode, reference, amount, currency, status]
+      properties:
+        customer:
+          type: object
+          properties:
+            _id:
+              type: string
+              example: "6281559426fa29659c5ac38a"
+            phoneNumber:
+              type: string
+              example: "255684118011"
+            firstname:
+              type: string
+              example: "FRANCIS"
+            lastname:
+              type: string
+              example: "MWAKATUMBULA"
+            mno:
+              type: string
+              description: Mobile Network Operator
+              example: "Airtel"
+        merchantAccountId:
+          type: string
+          description: Merchant account name
+          example: "Lockwood Technology"
+        mode:
+          type: string
+          description: Payment mode
+          enum: [CHARGE, PAYOUT, REFUND]
+          example: "CHARGE"
+        reference:
+          type: string
+          example: "ML21030"
+        amount:
+          type: integer
+          example: 1000
+        currency:
+          type: string
+          example: "TZS"
+        link:
+          type: string
+          description: Link to the payment gateway or receipt
+        status:
+          type: string
+          description: Current payment status
+          enum: [PROCESSING, SUCCESS, FAILED, PENDING, CANCELLED]
+          example: "PROCESSING"
+
+    PaymentIntentPayload:
+      type: object
+      description: >
+        Full payment intent with control over payment method, mode, currency,
+        and customer details. Supports MNO push, card, and lipa number.
+      required: [mode, amount, paymentMethodDetails]
+      properties:
+        mode:
+          type: string
+          enum: [PAYOUT, CHARGE, REFUND]
+          example: "CHARGE"
+        amount:
+          type: number
+          description: Amount in TZS
+          example: 1000
+        reference:
+          type: string
+          nullable: true
+          description: Optional merchant reference
+          example: "ORDER-2026-0091"
+        currency:
+          type: string
+          enum: [TZS, USD, NGN]
+          nullable: true
+          description: Three-letter currency code. Defaults to TZS.
+          example: "TZS"
+        paymentMethodDetails:
+          type: object
+          required: [type, phoneNumber]
+          properties:
+            type:
+              type: string
+              enum:
+                - TIGOPESA_TZ
+                - MPESA_TZ
+                - HALOPESA_TZ
+                - HALOPESA_TZ_PUSH
+                - AIRTELMONEY_TZ
+                - TIGOPESA_TZ_PUSH
+                - MPESA_TZ_PUSH
+                - AIRTELMONEY_TZ_PUSH
+                - EASYPESA_TZ
+                - EASYPESA_TZ_PUSH
+                - CARD
+                - LIPA_NUMBER
+                - LIPA_NUMBER_PUSH
+              example: "MPESA_TZ_PUSH"
+            phoneNumber:
+              type: string
+              description: Customer phone number (255XXXXXXXXX)
+              example: "255742200105"
+            cardNumber:
+              type: number
+              description: Card PAN (CARD type only)
+            expiryMonth:
+              type: number
+              description: Card expiry month (CARD only)
+            expiryYear:
+              type: number
+              description: Card expiry year (CARD only)
+            holderName:
+              type: string
+              description: Name on the card (CARD only)
+            brand:
+              type: string
+              description: Card brand e.g. VISA, MASTERCARD (CARD only)
+            cvc:
+              type: number
+              description: Card CVC (CARD only)
+        customer:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+              example: "jane@example.com"
+            phoneNumber:
+              type: string
+              example: "255742200105"
+            firstname:
+              type: string
+              example: "JANE"
+            lastname:
+              type: string
+              example: "DOE"
+            billingAddress:
+              type: object
+              properties:
+                address:
+                  type: string
+                  example: "Mikocheni, Plot 14"
+                city:
+                  type: string
+                  example: "Dar es Salaam"
+                region:
+                  type: string
+                  example: "Dar es Salaam"
+                postcode:
+                  type: string
+                  example: "14112"
+                country:
+                  type: string
+                  example: "TZ"
+
+    ApprovePaymentRequest:
+      type: object
+      required: [reference, approved]
+      properties:
+        reference:
+          type: string
+          description: Payment reference
+          example: "ML26059"
+        approved:
+          type: boolean
+          description: Approval status
+          example: true
+
+    ApprovePaymentResponse:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Processing your payment request"
+        data:
+          type: string
+          example: "Payment request sent to DEOVOLENT 255652770067 for TZS 87000"
+
+    PaymentReportPayload:
+      type: object
+      description: Date-range filter for payment reports.
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          format: date
+          example: "2026-01-01"
+        to:
+          type: string
+          format: date
+          example: "2026-01-31"
+
+    # ─── Customers ──────────────────────────────────────────
+    CustomerRequest:
+      type: object
+      required: [phoneNumber, firstname, lastname]
+      properties:
+        phoneNumber:
+          type: string
+          description: Phone number in international format
+          example: "255742200105"
+        firstname:
+          type: string
+          example: "John"
+        lastname:
+          type: string
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        type:
+          type: string
+          description: Customer type
+          enum: [INDIVIDUAL, BUSINESS]
+          example: "INDIVIDUAL"
+        address:
+          type: object
+          properties:
+            street:
+              type: string
+              example: "Morogoro Road"
+            city:
+              type: string
+              example: "Dar es Salaam"
+            country:
+              type: string
+              example: "Tanzania"
+
+    CustomerResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "6281559426fa29659c5ac38a"
+        phoneNumber:
+          type: string
+          example: "255742200105"
+        firstname:
+          type: string
+          example: "John"
+        lastname:
+          type: string
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          example: "john.doe@example.com"
+        type:
+          type: string
+          example: "INDIVIDUAL"
+        project:
+          type: string
+          description: Project ID this customer belongs to
+          example: "63db68a6c5f3e7682e23c2ca"
+        deleted:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-02-02T07:39:18.979Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2023-02-02T07:39:24.934Z"
+
+    # ─── Invoices ───────────────────────────────────────────
+    InvoiceRequest:
+      type: object
+      required: [customer, items, dueDate, currency]
+      properties:
+        customer:
+          type: string
+          description: Customer ID
+          example: "6281559426fa29659c5ac38a"
+        items:
+          type: array
+          description: Line items on the invoice
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+        dueDate:
+          type: string
+          format: date
+          example: "2024-03-31"
+        currency:
+          type: string
+          example: "TZS"
+        notes:
+          type: string
+          example: "Payment due within 30 days"
+        taxRate:
+          type: number
+          description: Tax rate as a percentage (e.g. 18 for 18%)
+          example: 18
+
+    InvoiceResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "64c2de5f1a3b7e9d0f5a2c81"
+        reference:
+          type: string
+          description: Unique invoice reference number
+          example: "INV-2024-001"
+        customer:
+          type: string
+          example: "6281559426fa29659c5ac38a"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+        subtotal:
+          type: number
+          example: 500000
+        tax:
+          type: number
+          example: 90000
+        total:
+          type: number
+          example: 590000
+        currency:
+          type: string
+          example: "TZS"
+        status:
+          type: string
+          description: Invoice status
+          enum: [DRAFT, SENT, PAID, OVERDUE, CANCELLED]
+          example: "SENT"
+        dueDate:
+          type: string
+          format: date
+          example: "2024-03-31"
+        notes:
+          type: string
+          example: "Payment due within 30 days"
+        project:
+          type: string
+          example: "63db68a6c5f3e7682e23c2ca"
+        deleted:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-01T10:00:00.000Z"
+
+    InvoiceItem:
+      type: object
+      required: [description, quantity, unitPrice]
+      properties:
+        description:
+          type: string
+          example: "Website Design"
+        quantity:
+          type: integer
+          example: 1
+        unitPrice:
+          type: number
+          example: 500000
+        product:
+          type: string
+          description: Product ID (optional)
+          example: "64d3ef701b4c8f2a0e6b3d92"
+
+    # ─── Products ───────────────────────────────────────────
+    ProductRequest:
+      type: object
+      required: [name, price, currency]
+      properties:
+        name:
+          type: string
+          example: "Website Design Package"
+        description:
+          type: string
+          example: "Full responsive website with 5 pages"
+        price:
+          type: number
+          example: 1500000
+        currency:
+          type: string
+          example: "TZS"
+        category:
+          type: string
+          example: "Digital Services"
+        unit:
+          type: string
+          description: Unit of measure (e.g. piece, hour, month)
+          example: "project"
+        taxable:
+          type: boolean
+          example: true
+        active:
+          type: boolean
+          example: true
+
+    ProductResponse:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "64d3ef701b4c8f2a0e6b3d92"
+        name:
+          type: string
+          example: "Website Design Package"
+        description:
+          type: string
+          example: "Full responsive website with 5 pages"
+        price:
+          type: number
+          example: 1500000
+        currency:
+          type: string
+          example: "TZS"
+        category:
+          type: string
+          example: "Digital Services"
+        unit:
+          type: string
+          example: "project"
+        taxable:
+          type: boolean
+          example: true
+        active:
+          type: boolean
+          example: true
+        project:
+          type: string
+          example: "63db68a6c5f3e7682e23c2ca"
+        deleted:
+          type: boolean
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-03-01T10:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-03-01T10:00:00.000Z"
+
+    # ─── SMS ────────────────────────────────────────────────
+    SMSRequest:
+      type: object
+      description: Send a single SMS message.
+      required: [sender, phoneNumber, message]
+      properties:
+        sender:
+          type: string
+          description: Sender ID
+          example: "MALIPOPAY"
+        phoneNumber:
+          type: string
+          description: Recipient phone number
+          example: "255742200105"
+        provider:
+          type: string
+          description: SMS provider
+          example: "airtel"
+        message:
+          type: string
+          description: Message content
+          example: "Hello from MalipoPay!"
+
+    BulkSMSRequest:
+      type: object
+      description: Send SMS to multiple recipients.
+      required: [sender, phoneNumber, message]
+      properties:
+        sender:
+          type: string
+          example: "MALIPOPAY"
+        phoneNumber:
+          type: array
+          description: List of recipient phone numbers
+          items:
+            type: string
+          example: ["255742200105", "255684118011"]
+        provider:
+          type: string
+          example: "airtel"
+        message:
+          type: string
+          example: "Bulk SMS from MalipoPay!"
+
+    ScheduleSMSRequest:
+      type: object
+      description: Schedule SMS for future delivery.
+      required: [sender, phoneNumber, message, date]
+      properties:
+        sender:
+          type: string
+          example: "MALIPOPAY"
+        phoneNumber:
+          type: array
+          items:
+            type: string
+          example: ["255742200105"]
+        message:
+          type: string
+          example: "Scheduled SMS!"
+        date:
+          type: string
+          format: date-time
+          description: ISO 8601 delivery date
+          example: "2026-03-20T10:00:00.000Z"
+
+    SMSResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: integer
+          example: 2000
+        message:
+          type: string
+          example: "SMS sent successfully"
+        data:
+          type: object
+          description: SMS result data

@@ -1,0 +1,31 @@
+name: Validate OpenAPI Spec
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "openapi.yaml"
+      - "schemas/**"
+      - ".github/workflows/validate.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "openapi.yaml"
+      - "schemas/**"
+      - ".github/workflows/validate.yml"
+
+jobs:
+  lint:
+    name: Lint OpenAPI spec
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Lint with Spectral
+        run: npx @stoplight/spectral-cli lint openapi.yaml
